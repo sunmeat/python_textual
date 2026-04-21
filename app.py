@@ -175,32 +175,30 @@ class TodoApp(App):
 
     def action_mark_done(self) -> None:
         table = self.query_one(DataTable)
-        row_key = table.cursor_row_key
-        if not row_key:
+        row_index = table.cursor_row
+
+        if row_index is None or row_index < 0:
             self.notify("Виберіть завдання", severity="warning")
             return
 
-        # row_key = "task-5", index = 4
-        try:
-            idx = int(str(row_key).split("-")[1]) - 1
-            if self.model.mark_done(idx):
-                self.notify("Позначено як виконане!", severity="success")
-                self.refresh_table()
-            else:
-                self.notify("Невірний номер", severity="error")
-        except (ValueError, IndexError):
-            self.notify("Помилка при позначенні", severity="error")
+        if self.model.mark_done(row_index):
+            self.notify("Позначено як виконане!", severity="success")
+            self.refresh_table()
+        else:
+            self.notify("Невірний номер", severity="error")
 
     def action_delete_task(self) -> None:
         table = self.query_one(DataTable)
-        row_key = table.cursor_row_key
-        if not row_key:
+        row_index = table.cursor_row
+
+        if row_index is None or row_index < 0:
             self.notify("Виберіть завдання", severity="warning")
             return
 
         try:
-            idx = int(str(row_key).split("-")[1]) - 1
-            task = self.model.get_all_tasks()[idx]
+            tasks = self.model.get_all_tasks()
+            task = tasks[row_index]
+
             def confirm_delete(result: int | None) -> None:
                 if result is not None:
                     if self.model.delete_task(result):
@@ -209,8 +207,8 @@ class TodoApp(App):
                         self.notify("Невірний номер", severity="error")
                     self.refresh_table()
 
-            self.push_screen(ConfirmDeleteScreen(idx, task.description), confirm_delete)
-        except (ValueError, IndexError):
+            self.push_screen(ConfirmDeleteScreen(row_index, task.description), confirm_delete)
+        except IndexError:
             self.notify("Помилка при видаленні", severity="error")
 
     def action_refresh(self) -> None:
